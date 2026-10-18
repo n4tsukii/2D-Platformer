@@ -10,6 +10,8 @@ namespace Platformer
 
         private void Awake()
         {
+            // A room passage must never become a solid wall when an old exit is reused.
+            GetComponent<BoxCollider2D>().isTrigger = true;
             cam = Camera.main.GetComponent<CameraController>();
         }
 

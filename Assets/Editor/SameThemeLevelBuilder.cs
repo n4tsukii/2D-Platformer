@@ -69,6 +69,7 @@ public static class SameThemeLevelBuilder
             Transform room = rooms[i];
             room.name = "Room" + (i + 1);
             var door = room.Find("Door").GetComponent<Platformer.Door>();
+            door.GetComponent<BoxCollider2D>().isTrigger = true;
             SetReference(door, "previousRoom", room);
             SetReference(door, "nextRoom", i + 1 < rooms.Count ? rooms[i + 1] : null);
             SetReference(door, "cam", Camera.main.GetComponent<Platformer.CameraController>());
