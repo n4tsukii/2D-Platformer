@@ -7,6 +7,14 @@ namespace Platformer
         [SerializeField] private GameObject[] enemies;
         private Vector3[] initialPosition;
 
+        [Header("Camera")]
+        [Tooltip("Lowest and highest camera centre, relative to the room. Equal values keep the camera fixed.")]
+        [SerializeField] private float cameraMinY;
+        [SerializeField] private float cameraMaxY;
+
+        public float CameraMinY => cameraMinY;
+        public float CameraMaxY => cameraMaxY;
+
         private void Awake()
         {
             initialPosition = new Vector3[enemies.Length];

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Platformer
@@ -19,6 +20,7 @@ namespace Platformer
         [Header("Wall Jumping")]
         [SerializeField] private float wallJumpX;
         [SerializeField] private float wallJumpY;
+        [SerializeField] private float wallJumpLockTime = 0.2f;
 
         [Header("Layers")]
         [SerializeField] private LayerMask groundLayer;
@@ -38,6 +40,7 @@ namespace Platformer
             body = GetComponent<Rigidbody2D>();
             anim = GetComponent<Animator>();
             boxCollider = GetComponent<BoxCollider2D>();
+            wallJumpCooldown = wallJumpLockTime;
         }
 
         private void Update()
@@ -56,13 +59,20 @@ namespace Platformer
             if (Input.GetKeyDown(KeyCode.Space))
                 Jump();
 
-            if (Input.GetKeyUp(KeyCode.Space) && body.linearVelocity.y > 0)
+            if (Input.GetKeyUp(KeyCode.Space) && body.linearVelocity.y > 0 && wallJumpCooldown >= wallJumpLockTime)
                 body.linearVelocity = new Vector2(body.linearVelocity.x, body.linearVelocity.y / 2);
 
-            if (onWall())
+            if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+                DropThroughPlatform();
+
+            // Let the wall jump push the player away before steering resumes.
+            if (wallJumpCooldown < wallJumpLockTime)
+                wallJumpCooldown += Time.deltaTime;
+            else if (onWall())
             {
                 body.gravityScale = 0;
                 body.linearVelocity = Vector2.zero;
+                jumpCounter = extraJumps;
             }
             else
             {
@@ -111,14 +121,39 @@ namespace Platformer
 
         private void WallJump()
         {
-            body.AddForce(new Vector2(-Mathf.Sign(transform.localScale.x) * wallJumpX, wallJumpY));
+            body.gravityScale = 7;
+            body.linearVelocity = new Vector2(-Mathf.Sign(transform.localScale.x) * wallJumpX, wallJumpY);
             wallJumpCooldown = 0;
+        }
+
+        private void DropThroughPlatform()
+        {
+            RaycastHit2D hit = GroundBelow();
+            if (hit.collider != null && hit.collider.usedByEffector && hit.collider.GetComponent<PlatformEffector2D>())
+                StartCoroutine(IgnorePlatform(hit.collider));
+        }
+
+        private IEnumerator IgnorePlatform(Collider2D platform)
+        {
+            Physics2D.IgnoreCollision(boxCollider, platform, true);
+            // Long enough to clear the strip, short enough to still land on a platform three tiles lower.
+            yield return new WaitForSeconds(0.2f);
+            Physics2D.IgnoreCollision(boxCollider, platform, false);
         }
 
         private bool isGrounded()
         {
-            RaycastHit2D raycastHit = Physics2D.BoxCast(boxCollider.bounds.center, boxCollider.bounds.size, 0, Vector2.down, 0.1f, groundLayer);
-            return raycastHit.collider != null;
+            // Moving up means passing through a one-way platform, not standing on it.
+            return body.linearVelocity.y <= 0.01f && GroundBelow().collider != null;
+        }
+        private RaycastHit2D GroundBelow()
+        {
+            // Only a thin strip under the feet counts, so ceilings and side walls never refill the jumps.
+            // Wall tops count as ground.
+            Bounds bounds = boxCollider.bounds;
+            Vector2 feet = new Vector2(bounds.center.x, bounds.min.y + 0.05f);
+            Vector2 size = new Vector2(bounds.size.x * 0.9f, 0.1f);
+            return Physics2D.BoxCast(feet, size, 0, Vector2.down, 0.1f, groundLayer | wallLayer);
         }
         private bool onWall()
         {
