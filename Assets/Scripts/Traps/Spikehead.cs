@@ -74,7 +74,8 @@ public class Spikehead : EnemyDamage
     {
         if (attacking)
         {
-            SoundManager.instance.PlaySound(impactSound);
+            if (SoundManager.instance != null)
+                SoundManager.instance.PlaySound(impactSound);
             switch (attackDirection)
             {
                 case 0: anim.Play("hit right", 0, 0f); break;
